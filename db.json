@@ -1,0 +1,78 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Gaurav",
+      "email": "gaurav@test.com",
+      "password": "12345",
+      "role": "user"
+    }
+  ],
+  "reels": [
+    {
+      "id": 1,
+      "restaurant": "Burger King",
+      "dish": "Whopper Burger",
+      "price": 199,
+      "color": "#ff6b6b"
+    },
+    {
+      "id": 2,
+      "restaurant": "Pizza Hut",
+      "dish": "Margherita Pizza",
+      "price": 299,
+      "color": "#ffa500"
+    },
+    {
+      "id": 3,
+      "restaurant": "KFC",
+      "dish": "Crispy Chicken",
+      "price": 249,
+      "color": "#ff4500"
+    },
+    {
+      "id": 4,
+      "restaurant": "Dominos",
+      "dish": "Pasta Italiana",
+      "price": 179,
+      "color": "#e85d04"
+    },
+    {
+      "id": 5,
+      "restaurant": "Subway",
+      "dish": "Veggie Sandwich",
+      "price": 149,
+      "color": "#2ecc71"
+    },
+    {
+      "id": 6,
+      "restaurant": "McDonalds",
+      "dish": "McChicken Burger",
+      "price": 179,
+      "color": "#f39c12"
+    },
+    {
+      "id": 7,
+      "restaurant": "Pizza Hut",
+      "dish": "Chicken Pizza",
+      "price": 349,
+      "color": "#8e44ad"
+    }
+  ],
+  "orders": [
+    {
+      "id": 1,
+      "dish": "Whopper Burger",
+      "price": 199,
+      "customer": "gaurav@test.com",
+      "status": "New"
+    },
+    {
+      "id": 2,
+      "dish": "Margherita Pizza",
+      "price": 299,
+      "customer": "gaurav@test.com",
+      "status": "New"
+    }
+  ]
+}
