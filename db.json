@@ -59,20 +59,5 @@
       "color": "#8e44ad"
     }
   ],
-  "orders": [
-    {
-      "id": 1,
-      "dish": "Whopper Burger",
-      "price": 199,
-      "customer": "gaurav@test.com",
-      "status": "New"
-    },
-    {
-      "id": 2,
-      "dish": "Margherita Pizza",
-      "price": 299,
-      "customer": "gaurav@test.com",
-      "status": "New"
-    }
-  ]
+  "orders": []
 }

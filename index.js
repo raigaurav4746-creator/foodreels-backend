@@ -71,6 +71,13 @@ app.get('/orders', (req, res) => {
   res.json(db.orders);
 });
 
+app.delete('/orders/clear', (req, res) => {
+  const db = readDB();
+  db.orders = [];
+  writeDB(db);
+  res.json({ message: 'Orders cleared' });
+});
+
 app.listen(8000, () => {
   console.log('Server is running on port 8000');
 });
