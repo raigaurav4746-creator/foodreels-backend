@@ -23,7 +23,8 @@ const readDB = () => {
         { id: 6, restaurant: 'McDonalds', dish: 'McChicken Burger', price: 179, color: '#f39c12' },
         { id: 7, restaurant: 'Pizza Hut', dish: 'Chicken Pizza', price: 349, color: '#8e44ad' }
       ],
-      orders: []
+      orders: [],
+      reviews: []
     };
   }
 };
@@ -96,6 +97,28 @@ app.delete('/orders/clear', (req, res) => {
   db.orders = [];
   writeDB(db);
   res.json({ message: 'Orders cleared' });
+});
+
+app.get('/reviews', (req, res) => {
+  const db = readDB();
+  res.json(db.reviews || []);
+});
+
+app.post('/reviews', (req, res) => {
+  const db = readDB();
+  const { reelId, user, comment, rating } = req.body;
+  if (!db.reviews) db.reviews = [];
+  const newReview = {
+    id: db.reviews.length + 1,
+    reelId,
+    user,
+    comment,
+    rating,
+    time: new Date().toLocaleTimeString()
+  };
+  db.reviews.push(newReview);
+  writeDB(db);
+  res.json({ message: 'Review added!', review: newReview });
 });
 
 app.listen(8000, () => {
