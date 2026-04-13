@@ -1,124 +1,177 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
+const mongoose = require('mongoose');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const readDB = () => {
-  try {
-    const data = fs.readFileSync('./db.json', 'utf8');
-    return JSON.parse(data);
-  } catch {
-    return {
-      users: [],
-      reels: [
-        { id: 1, restaurant: 'Burger King', dish: 'Whopper Burger', price: 199, color: '#ff6b6b' },
-        { id: 2, restaurant: 'Pizza Hut', dish: 'Margherita Pizza', price: 299, color: '#ffa500' },
-        { id: 3, restaurant: 'KFC', dish: 'Crispy Chicken', price: 249, color: '#ff4500' },
-        { id: 4, restaurant: 'Dominos', dish: 'Pasta Italiana', price: 179, color: '#e85d04' },
-        { id: 5, restaurant: 'Subway', dish: 'Veggie Sandwich', price: 149, color: '#2ecc71' },
-        { id: 6, restaurant: 'McDonalds', dish: 'McChicken Burger', price: 179, color: '#f39c12' },
-        { id: 7, restaurant: 'Pizza Hut', dish: 'Chicken Pizza', price: 349, color: '#8e44ad' }
-      ],
-      orders: [],
-      reviews: []
-    };
+const MONGODB_URI = 'mongodb+srv://raigaurav4746_db_user:2Ymdwj4hbVVt9eB2@cluster0.xqigu6q.mongodb.net/foodreels?appName=Cluster0';
+
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB!'))
+  .catch(err => console.log('MongoDB error:', err));
+
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: { type: String, unique: true },
+  password: String,
+  role: String
+});
+
+const reelSchema = new mongoose.Schema({
+  restaurant: String,
+  dish: String,
+  price: Number,
+  color: String
+});
+
+const orderSchema = new mongoose.Schema({
+  dish: String,
+  price: Number,
+  customer: String,
+  status: { type: String, default: 'New' }
+});
+
+const reviewSchema = new mongoose.Schema({
+  reelId: Number,
+  user: String,
+  comment: String,
+  rating: Number,
+  time: String
+});
+
+const User = mongoose.model('User', userSchema);
+const Reel = mongoose.model('Reel', reelSchema);
+const Order = mongoose.model('Order', orderSchema);
+const Review = mongoose.model('Review', reviewSchema);
+
+const initReels = async () => {
+  const count = await Reel.countDocuments();
+  if (count === 0) {
+    await Reel.insertMany([
+      { restaurant: 'Burger King', dish: 'Whopper Burger', price: 199, color: '#ff6b6b' },
+      { restaurant: 'Pizza Hut', dish: 'Margherita Pizza', price: 299, color: '#ffa500' },
+      { restaurant: 'KFC', dish: 'Crispy Chicken', price: 249, color: '#ff4500' },
+      { restaurant: 'Dominos', dish: 'Pasta Italiana', price: 179, color: '#e85d04' },
+      { restaurant: 'Subway', dish: 'Veggie Sandwich', price: 149, color: '#2ecc71' },
+      { restaurant: 'McDonalds', dish: 'McChicken Burger', price: 179, color: '#f39c12' },
+      { restaurant: 'Pizza Hut', dish: 'Chicken Pizza', price: 349, color: '#8e44ad' }
+    ]);
+    console.log('Reels initialized!');
   }
 };
 
-const writeDB = (data) => {
-  try {
-    fs.writeFileSync('./db.json', JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.log('Write error:', err);
-  }
-};
+mongoose.connection.once('open', initReels);
 
 app.get('/', (req, res) => {
-  res.send('FoodReels Backend is running!');
+  res.send('FoodReels Backend is running with MongoDB!');
 });
 
-app.post('/register', (req, res) => {
-  const db = readDB();
-  const { name, email, password, role } = req.body;
-  const existingUser = db.users.find(u => u.email === email);
-  if (existingUser) {
-    return res.status(400).json({ message: 'User already exists' });
+app.post('/register', async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+    const newUser = new User({ name, email, password, role });
+    await newUser.save();
+    res.json({ message: 'Registered successfully', user: { name, email, role } });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
   }
-  const newUser = { id: db.users.length + 1, name, email, password, role };
-  db.users.push(newUser);
-  writeDB(db);
-  res.json({ message: 'Registered successfully', user: { name, email, role } });
 });
 
-app.post('/login', (req, res) => {
-  const db = readDB();
-  const { email, password } = req.body;
-  const user = db.users.find(u => u.email === email && u.password === password);
-  if (!user) {
-    return res.status(400).json({ message: 'Invalid email or password' });
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email, password });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid email or password' });
+    }
+    res.json({ message: 'Login successful', user: { name: user.name, email, role: user.role } });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
   }
-  res.json({ message: 'Login successful', user: { name: user.name, email, role: user.role } });
 });
 
-app.get('/reels', (req, res) => {
-  const db = readDB();
-  res.json(db.reels);
+app.get('/reels', async (req, res) => {
+  try {
+    const reels = await Reel.find();
+    const reelsWithId = reels.map((r, i) => ({
+      id: i + 1,
+      restaurant: r.restaurant,
+      dish: r.dish,
+      price: r.price,
+      color: r.color
+    }));
+    res.json(reelsWithId);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-app.post('/reels', (req, res) => {
-  const db = readDB();
-  const { restaurant, dish, price, color } = req.body;
-  const newReel = { id: db.reels.length + 1, restaurant, dish, price, color };
-  db.reels.push(newReel);
-  writeDB(db);
-  res.json({ message: 'Reel uploaded successfully', reel: newReel });
+app.post('/reels', async (req, res) => {
+  try {
+    const { restaurant, dish, price, color } = req.body;
+    const newReel = new Reel({ restaurant, dish, price, color });
+    await newReel.save();
+    res.json({ message: 'Reel uploaded successfully', reel: newReel });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-app.post('/order', (req, res) => {
-  const db = readDB();
-  const { dish, price, customer } = req.body;
-  const newOrder = { id: db.orders.length + 1, dish, price, customer, status: 'New' };
-  db.orders.push(newOrder);
-  writeDB(db);
-  res.json({ message: 'Order placed successfully', order: newOrder });
+app.post('/order', async (req, res) => {
+  try {
+    const { dish, price, customer } = req.body;
+    const newOrder = new Order({ dish, price, customer });
+    await newOrder.save();
+    res.json({ message: 'Order placed successfully', order: newOrder });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-app.get('/orders', (req, res) => {
-  const db = readDB();
-  res.json(db.orders);
+app.get('/orders', async (req, res) => {
+  try {
+    const orders = await Order.find();
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-app.delete('/orders/clear', (req, res) => {
-  const db = readDB();
-  db.orders = [];
-  writeDB(db);
-  res.json({ message: 'Orders cleared' });
+app.delete('/orders/clear', async (req, res) => {
+  try {
+    await Order.deleteMany({});
+    res.json({ message: 'Orders cleared' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-app.get('/reviews', (req, res) => {
-  const db = readDB();
-  res.json(db.reviews || []);
+app.get('/reviews', async (req, res) => {
+  try {
+    const reviews = await Review.find();
+    res.json(reviews);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-app.post('/reviews', (req, res) => {
-  const db = readDB();
-  const { reelId, user, comment, rating } = req.body;
-  if (!db.reviews) db.reviews = [];
-  const newReview = {
-    id: db.reviews.length + 1,
-    reelId,
-    user,
-    comment,
-    rating,
-    time: new Date().toLocaleTimeString()
-  };
-  db.reviews.push(newReview);
-  writeDB(db);
-  res.json({ message: 'Review added!', review: newReview });
+app.post('/reviews', async (req, res) => {
+  try {
+    const { reelId, user, comment, rating } = req.body;
+    const time = new Date().toLocaleTimeString();
+    const newReview = new Review({ reelId, user, comment, rating, time });
+    await newReview.save();
+    res.json({ message: 'Review added!', review: newReview });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 app.listen(8000, () => {
