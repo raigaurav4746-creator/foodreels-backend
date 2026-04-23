@@ -31,11 +31,13 @@ const orderSchema = new mongoose.Schema({
   dish: String,
   price: Number,
   customer: String,
-  status: { type: String, default: 'New' }
+  restaurant: String,
+  status: { type: String, default: 'New' },
+  createdAt: { type: Date, default: Date.now }
 });
 
 const reviewSchema = new mongoose.Schema({
-  reelId: Number,
+  reelId: String,
   user: String,
   comment: String,
   rating: Number,
@@ -59,14 +61,14 @@ const initReels = async () => {
       { restaurant: 'McDonalds', dish: 'McChicken Burger', price: 179, color: '#f39c12' },
       { restaurant: 'Pizza Hut', dish: 'Chicken Pizza', price: 349, color: '#8e44ad' }
     ]);
-    console.log('Reels initialized!');
+    console.log('Default reels added!');
   }
 };
 
 mongoose.connection.once('open', initReels);
 
 app.get('/', (req, res) => {
-  res.send('FoodReels Backend is running with MongoDB!');
+  res.send('FoodReels Backend running with MongoDB!');
 });
 
 app.post('/register', async (req, res) => {
@@ -100,8 +102,8 @@ app.post('/login', async (req, res) => {
 app.get('/reels', async (req, res) => {
   try {
     const reels = await Reel.find();
-    const reelsWithId = reels.map((r, i) => ({
-      id: i + 1,
+    const reelsWithId = reels.map(r => ({
+      id: r._id.toString(),
       restaurant: r.restaurant,
       dish: r.dish,
       price: r.price,
@@ -116,9 +118,12 @@ app.get('/reels', async (req, res) => {
 app.post('/reels', async (req, res) => {
   try {
     const { restaurant, dish, price, color } = req.body;
-    const newReel = new Reel({ restaurant, dish, price, color });
+    if (!restaurant || !dish || !price) {
+      return res.status(400).json({ message: 'Restaurant, dish and price are required' });
+    }
+    const newReel = new Reel({ restaurant, dish, price: parseInt(price), color: color || '#e85d04' });
     await newReel.save();
-    res.json({ message: 'Reel uploaded successfully', reel: newReel });
+    res.json({ message: 'Reel added successfully!', reel: newReel });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -126,8 +131,8 @@ app.post('/reels', async (req, res) => {
 
 app.post('/order', async (req, res) => {
   try {
-    const { dish, price, customer } = req.body;
-    const newOrder = new Order({ dish, price, customer });
+    const { dish, price, customer, restaurant } = req.body;
+    const newOrder = new Order({ dish, price, customer, restaurant: restaurant || 'Unknown' });
     await newOrder.save();
     res.json({ message: 'Order placed successfully', order: newOrder });
   } catch (err) {
@@ -137,17 +142,17 @@ app.post('/order', async (req, res) => {
 
 app.get('/orders', async (req, res) => {
   try {
-    const orders = await Order.find();
+    const orders = await Order.find().sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-app.delete('/orders/clear', async (req, res) => {
+app.get('/orders/restaurant/:restaurant', async (req, res) => {
   try {
-    await Order.deleteMany({});
-    res.json({ message: 'Orders cleared' });
+    const orders = await Order.find({ restaurant: req.params.restaurant }).sort({ createdAt: -1 });
+    res.json(orders);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
