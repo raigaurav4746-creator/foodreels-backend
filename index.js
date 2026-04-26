@@ -44,10 +44,19 @@ const reviewSchema = new mongoose.Schema({
   time: String
 });
 
+const complaintSchema = new mongoose.Schema({
+  customer: String,
+  subject: String,
+  message: String,
+  status: { type: String, default: 'Pending' },
+  createdAt: { type: Date, default: Date.now }
+});
+
 const User = mongoose.model('User', userSchema);
 const Reel = mongoose.model('Reel', reelSchema);
 const Order = mongoose.model('Order', orderSchema);
 const Review = mongoose.model('Review', reviewSchema);
+const Complaint = mongoose.model('Complaint', complaintSchema);
 
 const initReels = async () => {
   const count = await Reel.countDocuments();
@@ -174,6 +183,29 @@ app.post('/reviews', async (req, res) => {
     const newReview = new Review({ reelId, user, comment, rating, time });
     await newReview.save();
     res.json({ message: 'Review added!', review: newReview });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/complaints', async (req, res) => {
+  try {
+    const { customer, subject, message } = req.body;
+    if (!customer || !subject || !message) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+    const newComplaint = new Complaint({ customer, subject, message });
+    await newComplaint.save();
+    res.json({ message: 'Complaint submitted successfully!', complaint: newComplaint });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/complaints', async (req, res) => {
+  try {
+    const complaints = await Complaint.find().sort({ createdAt: -1 });
+    res.json(complaints);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
