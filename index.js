@@ -24,7 +24,11 @@ const reelSchema = new mongoose.Schema({
   restaurant: String,
   dish: String,
   price: Number,
-  color: String
+  color: String,
+  openTime: { type: String, default: '09:00' },
+  closeTime: { type: String, default: '22:00' },
+  deliveryTime: { type: String, default: '30-45 mins' },
+  minOrder: { type: Number, default: 99 }
 });
 
 const orderSchema = new mongoose.Schema({
@@ -62,13 +66,13 @@ const initReels = async () => {
   const count = await Reel.countDocuments();
   if (count === 0) {
     await Reel.insertMany([
-      { restaurant: 'Burger King', dish: 'Whopper Burger', price: 199, color: '#ff6b6b' },
-      { restaurant: 'Pizza Hut', dish: 'Margherita Pizza', price: 299, color: '#ffa500' },
-      { restaurant: 'KFC', dish: 'Crispy Chicken', price: 249, color: '#ff4500' },
-      { restaurant: 'Dominos', dish: 'Pasta Italiana', price: 179, color: '#e85d04' },
-      { restaurant: 'Subway', dish: 'Veggie Sandwich', price: 149, color: '#2ecc71' },
-      { restaurant: 'McDonalds', dish: 'McChicken Burger', price: 179, color: '#f39c12' },
-      { restaurant: 'Pizza Hut', dish: 'Chicken Pizza', price: 349, color: '#8e44ad' }
+      { restaurant: 'Burger King', dish: 'Whopper Burger', price: 199, color: '#ff6b6b', openTime: '10:00', closeTime: '23:00', deliveryTime: '25-35 mins', minOrder: 99 },
+      { restaurant: 'Pizza Hut', dish: 'Margherita Pizza', price: 299, color: '#ffa500', openTime: '11:00', closeTime: '23:00', deliveryTime: '30-45 mins', minOrder: 149 },
+      { restaurant: 'KFC', dish: 'Crispy Chicken', price: 249, color: '#ff4500', openTime: '10:00', closeTime: '23:00', deliveryTime: '20-30 mins', minOrder: 99 },
+      { restaurant: 'Dominos', dish: 'Pasta Italiana', price: 179, color: '#e85d04', openTime: '10:00', closeTime: '23:59', deliveryTime: '30-40 mins', minOrder: 99 },
+      { restaurant: 'Subway', dish: 'Veggie Sandwich', price: 149, color: '#2ecc71', openTime: '09:00', closeTime: '22:00', deliveryTime: '20-30 mins', minOrder: 99 },
+      { restaurant: 'McDonalds', dish: 'McChicken Burger', price: 179, color: '#f39c12', openTime: '08:00', closeTime: '23:59', deliveryTime: '20-30 mins', minOrder: 99 },
+      { restaurant: 'Pizza Hut', dish: 'Chicken Pizza', price: 349, color: '#8e44ad', openTime: '11:00', closeTime: '23:00', deliveryTime: '30-45 mins', minOrder: 149 }
     ]);
     console.log('Default reels added!');
   }
@@ -116,7 +120,11 @@ app.get('/reels', async (req, res) => {
       restaurant: r.restaurant,
       dish: r.dish,
       price: r.price,
-      color: r.color
+      color: r.color,
+      openTime: r.openTime || '09:00',
+      closeTime: r.closeTime || '22:00',
+      deliveryTime: r.deliveryTime || '30-45 mins',
+      minOrder: r.minOrder || 99
     }));
     res.json(reelsWithId);
   } catch (err) {
@@ -126,11 +134,19 @@ app.get('/reels', async (req, res) => {
 
 app.post('/reels', async (req, res) => {
   try {
-    const { restaurant, dish, price, color } = req.body;
+    const { restaurant, dish, price, color, openTime, closeTime, deliveryTime, minOrder } = req.body;
     if (!restaurant || !dish || !price) {
       return res.status(400).json({ message: 'Restaurant, dish and price are required' });
     }
-    const newReel = new Reel({ restaurant, dish, price: parseInt(price), color: color || '#e85d04' });
+    const newReel = new Reel({
+      restaurant, dish,
+      price: parseInt(price),
+      color: color || '#e85d04',
+      openTime: openTime || '09:00',
+      closeTime: closeTime || '22:00',
+      deliveryTime: deliveryTime || '30-45 mins',
+      minOrder: parseInt(minOrder) || 99
+    });
     await newReel.save();
     res.json({ message: 'Reel added successfully!', reel: newReel });
   } catch (err) {
