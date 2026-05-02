@@ -17,7 +17,10 @@ const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
   password: String,
-  role: String
+  role: String,
+  points: { type: Number, default: 0 },
+  referralCode: String,
+  referredBy: String
 });
 
 const reelSchema = new mongoose.Schema({
@@ -36,6 +39,7 @@ const orderSchema = new mongoose.Schema({
   price: Number,
   customer: String,
   restaurant: String,
+  pointsEarned: { type: Number, default: 0 },
   status: { type: String, default: 'New' },
   createdAt: { type: Date, default: Date.now }
 });
@@ -62,6 +66,10 @@ const Order = mongoose.model('Order', orderSchema);
 const Review = mongoose.model('Review', reviewSchema);
 const Complaint = mongoose.model('Complaint', complaintSchema);
 
+const generateReferralCode = (email) => {
+  return email.split('@')[0].toUpperCase().slice(0, 6) + Math.floor(Math.random() * 1000);
+};
+
 const initReels = async () => {
   const count = await Reel.countDocuments();
   if (count === 0) {
@@ -86,14 +94,24 @@ app.get('/', (req, res) => {
 
 app.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, referredBy } = req.body;
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
-    const newUser = new User({ name, email, password, role });
+    const referralCode = generateReferralCode(email);
+    let bonusPoints = 0;
+    if (referredBy) {
+      const referrer = await User.findOne({ referralCode: referredBy });
+      if (referrer) {
+        referrer.points += 50;
+        await referrer.save();
+        bonusPoints = 25;
+      }
+    }
+    const newUser = new User({ name, email, password, role, referralCode, referredBy, points: bonusPoints });
     await newUser.save();
-    res.json({ message: 'Registered successfully', user: { name, email, role } });
+    res.json({ message: 'Registered successfully', user: { name, email, role, referralCode, points: bonusPoints } });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -106,7 +124,17 @@ app.post('/login', async (req, res) => {
     if (!user) {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
-    res.json({ message: 'Login successful', user: { name: user.name, email, role: user.role } });
+    res.json({ message: 'Login successful', user: { name: user.name, email, role: user.role, points: user.points, referralCode: user.referralCode } });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/user/:email', async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.params.email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ points: user.points, referralCode: user.referralCode, name: user.name });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -157,9 +185,14 @@ app.post('/reels', async (req, res) => {
 app.post('/order', async (req, res) => {
   try {
     const { dish, price, customer, restaurant } = req.body;
-    const newOrder = new Order({ dish, price, customer, restaurant: restaurant || 'Unknown' });
+    const pointsEarned = Math.floor(price / 10);
+    const newOrder = new Order({ dish, price, customer, restaurant: restaurant || 'Unknown', pointsEarned });
     await newOrder.save();
-    res.json({ message: 'Order placed successfully', order: newOrder });
+    await User.findOneAndUpdate(
+      { email: customer },
+      { $inc: { points: pointsEarned } }
+    );
+    res.json({ message: 'Order placed successfully', order: newOrder, pointsEarned });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
